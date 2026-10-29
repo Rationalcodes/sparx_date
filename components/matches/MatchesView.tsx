@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/fire
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/lib/types"
 import { getLastSeenText } from "@/lib/common-utils"
+import { calculateAccurateDistance, formatAccurateDistanceLabel } from "@/lib/geocoding"
 import {
   Heart,
   Search,
@@ -74,7 +75,8 @@ export default function MatchesView({
             if (userSnap.exists()) {
               const data = userSnap.data() as UserProfile
               if (!data.email?.endsWith("@example.com")) {
-                fetchedProfiles.push({ ...data, uid })
+                const realDist = calculateAccurateDistance(currentProfile, data)
+                fetchedProfiles.push({ ...data, uid, distance: realDist })
               }
             }
           } catch (e) {
@@ -228,8 +230,8 @@ export default function MatchesView({
                   <div className="flex items-center space-x-1.5 text-xs text-slate-400 mt-1">
                     <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                     <span>
-                      {match.location?.city || "Nearby"}{" "}
-                      • {formatMatchDistance(match.distance, match.uid)}
+                      {match.location?.city || match.location?.address || "Location"}{" "}
+                      • {formatAccurateDistanceLabel(match.distance || 0)}
                     </span>
                   </div>
 

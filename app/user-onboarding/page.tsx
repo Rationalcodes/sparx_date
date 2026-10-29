@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { serverTimestamp } from "firebase/firestore"
 import { useAuth } from "@/context/AuthContext"
 import { uploadMedia, compressImageToDataUrl } from "@/lib/cloudinary"
+import { getCoordinatesForCity } from "@/lib/geocoding"
 import Loader from "@/components/Loader"
 import toast from "react-hot-toast"
 import {
@@ -359,6 +360,10 @@ export default function UserOnboardingPage() {
         })
       )
 
+      const cityCoords = getCoordinatesForCity(city.trim()) || { lat: 28.6139, lng: 77.209 }
+      const finalLat = Number(latitude) && Math.abs(Number(latitude)) > 0.001 ? Number(latitude) : cityCoords.lat
+      const finalLng = Number(longitude) && Math.abs(Number(longitude)) > 0.001 ? Number(longitude) : cityCoords.lng
+
       const profileData: UserProfile = {
         uid: user.uid,
         name: name.trim(),
@@ -377,11 +382,11 @@ export default function UserOnboardingPage() {
         diet,
         pets,
         location: {
-          latitude: Number(latitude) || 40.7128,
-          longitude: Number(longitude) || -74.006,
-          city: city.trim() || "New York",
-          state: state.trim() || "NY",
-          country: country.trim() || "USA",
+          latitude: finalLat,
+          longitude: finalLng,
+          city: city.trim() || "Delhi",
+          state: state.trim() || "",
+          country: country.trim() || "India",
           address: address.trim() || city.trim(),
         },
         additionalInfo: {

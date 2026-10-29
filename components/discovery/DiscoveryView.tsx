@@ -12,6 +12,7 @@ import {
 import { db } from "@/lib/firebase"
 import type { UserProfile } from "@/lib/types"
 import { calculateDistance, getLastSeenText } from "@/lib/common-utils"
+import { calculateAccurateDistance, formatAccurateDistanceLabel } from "@/lib/geocoding"
 import { executeSwipe } from "@/lib/firestore-service"
 import { soundEffects } from "@/lib/sound-effects"
 import {
@@ -140,14 +141,12 @@ export default function DiscoveryView({
 
           // Guarantee user is NOT self and has NEVER been swiped on
           if (uid !== currentUser?.uid && !allSwipedSet.has(uid)) {
-            const pLat = data.location?.latitude || userLat
-            const pLng = data.location?.longitude || userLng
-            const dist = calculateDistance(userLat, userLng, pLat, pLng)
+            const realDistance = calculateAccurateDistance(currentProfile, data)
 
             fetchedProfiles.push({
               ...data,
               uid,
-              distance: Math.round(dist * 10) / 10,
+              distance: realDistance,
             })
           }
         })
@@ -503,12 +502,12 @@ export default function DiscoveryView({
                 <div className="flex items-center space-x-1 bg-slate-800/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700">
                   <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span>
-                    {currentCandidate.location?.city || "Nearby"},{" "}
-                    {currentCandidate.location?.country || ""}
+                    {currentCandidate.location?.city || currentCandidate.location?.address || "Location"}
+                    {currentCandidate.location?.country ? `, ${currentCandidate.location.country}` : ""}
                   </span>
                 </div>
                 <div className="bg-slate-800/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700 text-pink-300 font-semibold">
-                  📍 {formatDisplayDistance(currentCandidate.distance, currentCandidate.uid)}
+                  📍 {formatAccurateDistanceLabel(currentCandidate.distance || 0)}
                 </div>
               </div>
 
