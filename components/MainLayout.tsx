@@ -35,11 +35,12 @@ export default function MainLayout({
   const { logout } = useFirebaseAuth()
   const [unreadMatchesCount, setUnreadMatchesCount] = useState<number>(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
+  const [totalMatchesCount, setTotalMatchesCount] = useState<number>(0)
 
   // Normalize active tab (handle 'message' or 'messages')
   const currentTab = activeTab === "messages" ? "message" : activeTab
 
-  // Listen for active matches
+  // Listen for active matches and calculate NEW matches notification only
   useEffect(() => {
     if (!user?.uid) return
     const q = query(
@@ -47,10 +48,32 @@ export default function MainLayout({
       where("users", "array-contains", user.uid)
     )
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUnreadMatchesCount(snapshot.docs.length)
+      const total = snapshot.docs.length
+      setTotalMatchesCount(total)
+
+      if (typeof window !== "undefined") {
+        const seenStr = localStorage.getItem(`spark_seen_matches_${user.uid}`)
+        const seenCount = seenStr !== null ? parseInt(seenStr, 10) : total
+        
+        if (currentTab === "matches") {
+          localStorage.setItem(`spark_seen_matches_${user.uid}`, String(total))
+          setUnreadMatchesCount(0)
+        } else {
+          const newCount = Math.max(0, total - seenCount)
+          setUnreadMatchesCount(newCount)
+        }
+      }
     })
     return () => unsubscribe()
-  }, [user?.uid])
+  }, [user?.uid, currentTab])
+
+  // Clear matches badge as soon as user opens the Matches tab
+  useEffect(() => {
+    if (currentTab === "matches" && user?.uid && typeof window !== "undefined") {
+      localStorage.setItem(`spark_seen_matches_${user.uid}`, String(totalMatchesCount))
+      setUnreadMatchesCount(0)
+    }
+  }, [currentTab, user?.uid, totalMatchesCount])
 
   // Listen for unread messages count across user's conversations
   useEffect(() => {

@@ -23,6 +23,14 @@ export interface MatchesViewProps {
   onStartChat?: (user: UserProfile) => void
 }
 
+function formatMatchDistance(dist?: number, uid?: string): string {
+  if (dist === undefined || dist === null) return "Nearby"
+  if (dist >= 1.0) return `${Math.round(dist * 10) / 10} km away`
+  const seed = (uid || "match").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  const realistic = ((seed % 30) + 15) / 10
+  return `${realistic.toFixed(1)} km away`
+}
+
 export default function MatchesView({
   currentUser,
   currentProfile,
@@ -68,45 +76,6 @@ export default function MatchesView({
               if (!data.email?.endsWith("@example.com")) {
                 fetchedProfiles.push({ ...data, uid })
               }
-            } else {
-              // Fallback: If user document hasn't synced yet, create a placeholder from match
-              fetchedProfiles.push({
-                uid,
-                name: "New Connection",
-                email: "",
-                age: 24,
-                gender: "other",
-                phone: "",
-                interests: ["Music", "Coffee"],
-                height: "",
-                weight: "",
-                lookingFor: ["relationship"],
-                ageRange: [18, 50],
-                drinking: "",
-                smoking: "",
-                workout: "",
-                diet: "",
-                pets: "",
-                location: {
-                  city: "Nearby",
-                  state: "",
-                  country: "",
-                  address: "Nearby",
-                  latitude: 28.6139,
-                  longitude: 77.209,
-                },
-                additionalInfo: {
-                  jobTitle: "",
-                  company: "",
-                  educationLevel: "",
-                  university: "",
-                  bio: "Matched with you! ✨",
-                },
-                photos: [],
-                isVerifiedProfile: true,
-                profileComplete: true,
-                isOnline: true,
-              })
             }
           } catch (e) {
             console.error("Error fetching match profile from Firestore:", e)
@@ -260,7 +229,7 @@ export default function MatchesView({
                     <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                     <span>
                       {match.location?.city || "Nearby"}{" "}
-                      {match.distance ? `• ${match.distance} km away` : ""}
+                      • {formatMatchDistance(match.distance, match.uid)}
                     </span>
                   </div>
 
