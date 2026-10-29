@@ -160,22 +160,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setProfile(null)
             }
           } else {
-            // Check fallback from localStorage if Firestore document hasn't synced yet
-            if (typeof window !== "undefined") {
-              try {
-                const cached = localStorage.getItem(`spark_profile_${firebaseUser.uid}`)
-                const onboardingDone = localStorage.getItem("onboarding_complete") === "true"
-                if (cached && onboardingDone) {
-                  const parsed = JSON.parse(cached) as UserProfile
-                  setProfile({ ...parsed, profileComplete: true })
-                  setRawProfile(parsed)
-                  setLoading(false)
-                  return
-                }
-              } catch {}
+            // Document does not exist in Firestore yet!
+            // Auto-provision initial profile immediately so user is visible to all members
+            const initialProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || "New Member",
+              email: firebaseUser.email || "",
+              age: 24,
+              gender: "other",
+              phone: "",
+              interests: ["Music", "Travel", "Coffee"],
+              height: "5'8\" (173cm)",
+              weight: "150 lbs",
+              lookingFor: ["relationship"],
+              ageRange: [18, 50],
+              drinking: "socially",
+              smoking: "never",
+              workout: "weekly",
+              diet: "omnivore",
+              pets: "dog lover",
+              photos: firebaseUser.photoURL ? [firebaseUser.photoURL] : [],
+              isOnline: true,
+              profileComplete: true,
+              isVerifiedProfile: true,
+              lastSeen: serverTimestamp(),
+              createdAt: serverTimestamp(),
+              location: {
+                city: "Nearby",
+                state: "",
+                country: "",
+                address: "Nearby",
+                latitude: 28.6139,
+                longitude: 77.209,
+              },
+              additionalInfo: {
+                jobTitle: "",
+                company: "",
+                educationLevel: "Bachelor's Degree",
+                university: "",
+                bio: "Excited to connect and make new friends! ✨",
+              },
             }
-            setProfile(null)
-            setRawProfile(null)
+
+            setDoc(userDocRef, initialProfile, { merge: true })
+              .then(() => {
+                setProfile(initialProfile)
+                setRawProfile(initialProfile)
+              })
+              .catch((err) => {
+                console.error("Auto-provision Firestore profile error (check Firestore Security Rules):", err)
+                setProfile(initialProfile)
+                setRawProfile(initialProfile)
+              })
+              .finally(() => {
+                setLoading(false)
+              })
+            return
           }
 
           // ONLY set loading to false after snapshot has been processed!

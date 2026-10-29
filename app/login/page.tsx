@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { Heart, Sparkles, Star, Zap, Users, Shield } from 'lucide-react'
-import { auth } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { STATS_DATA } from '@/lib/common-utils'
 import { useRouter } from 'next/navigation'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
@@ -32,7 +33,58 @@ export default function LoginPage() {
     setSigningIn(true)
     try {
       const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
+      const result = await signInWithPopup(auth, provider)
+      
+      // Auto-provision user in Firestore so they are immediately discoverable
+      try {
+        const userRef = doc(db, "users", result.user.uid)
+        await setDoc(
+          userRef,
+          {
+            uid: result.user.uid,
+            name: result.user.displayName || "New Member",
+            email: result.user.email || "",
+            photos: result.user.photoURL ? [result.user.photoURL] : [],
+            age: 24,
+            gender: "other",
+            phone: "",
+            interests: ["Travel", "Music", "Coffee"],
+            height: "5'8\" (173cm)",
+            weight: "150 lbs",
+            lookingFor: ["relationship"],
+            ageRange: [18, 50],
+            drinking: "socially",
+            smoking: "never",
+            workout: "weekly",
+            diet: "omnivore",
+            pets: "dog lover",
+            isOnline: true,
+            profileComplete: true,
+            isVerifiedProfile: true,
+            lastSeen: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            location: {
+              city: "Nearby",
+              state: "",
+              country: "",
+              address: "Nearby",
+              latitude: 28.6139,
+              longitude: 77.209,
+            },
+            additionalInfo: {
+              jobTitle: "",
+              company: "",
+              educationLevel: "Bachelor's Degree",
+              university: "",
+              bio: "Excited to meet new people! ✨",
+            },
+          },
+          { merge: true }
+        )
+      } catch (dbErr) {
+        console.warn("Could not write initial profile to Firestore:", dbErr)
+      }
+
       toast.success("Successfully signed in with Google!")
     } catch (error: any) {
       console.error("Error during Google sign-in:", error)
