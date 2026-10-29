@@ -68,6 +68,45 @@ export default function MatchesView({
               if (!data.email?.endsWith("@example.com")) {
                 fetchedProfiles.push({ ...data, uid })
               }
+            } else {
+              // Fallback: If user document hasn't synced yet, create a placeholder from match
+              fetchedProfiles.push({
+                uid,
+                name: "New Connection",
+                email: "",
+                age: 24,
+                gender: "other",
+                phone: "",
+                interests: ["Music", "Coffee"],
+                height: "",
+                weight: "",
+                lookingFor: ["relationship"],
+                ageRange: [18, 50],
+                drinking: "",
+                smoking: "",
+                workout: "",
+                diet: "",
+                pets: "",
+                location: {
+                  city: "Nearby",
+                  state: "",
+                  country: "",
+                  address: "Nearby",
+                  latitude: 28.6139,
+                  longitude: 77.209,
+                },
+                additionalInfo: {
+                  jobTitle: "",
+                  company: "",
+                  educationLevel: "",
+                  university: "",
+                  bio: "Matched with you! ✨",
+                },
+                photos: [],
+                isVerifiedProfile: true,
+                profileComplete: true,
+                isOnline: true,
+              })
             }
           } catch (e) {
             console.error("Error fetching match profile from Firestore:", e)

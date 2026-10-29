@@ -205,10 +205,23 @@ export default function DiscoveryView({
           soundEffects.playMatchCelebration()
           setMatchedProfile(candidate)
           setShowMatchModal(true)
+          toast.success(`🎉 You matched with ${candidate.name}!`, { duration: 5000 })
+        } else if (action === "like" || action === "superlike") {
+          toast(`Liked ${candidate.name}! Once they like you back, you'll match! 💫`, {
+            icon: "💖",
+            duration: 2500,
+          })
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Swipe execution error:", err)
+      if (err?.code === "permission-denied" || err?.message?.includes("permission")) {
+        toast.error("Database permission error: Please publish Firestore Rules in Firebase Console!", {
+          duration: 6000,
+        })
+      } else {
+        toast.error(err?.message || "Could not record swipe.")
+      }
     }
 
     setTimeout(() => {
