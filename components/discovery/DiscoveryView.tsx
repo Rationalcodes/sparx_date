@@ -60,20 +60,20 @@ export default function DiscoveryView({
 
   // Filters State
   const [showFilters, setShowFilters] = useState(false)
-  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(100)
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(50000) // Default to global/unlimited so distance never hides friends
   const [genderFilter, setGenderFilter] = useState<string>("all")
-  const [ageRange, setAgeRange] = useState<[number, number]>([18, 60])
+  const [ageRange, setAgeRange] = useState<[number, number]>([18, 100])
 
   // Visual animated stamp direction
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | "super" | null>(null)
 
   // Fetch Discoverable Profiles
-  const fetchProfiles = useCallback(async () => {
+  const fetchProfiles = useCallback(async (ignoreSwiped = false) => {
     setLoading(true)
     try {
       let swipedUserIds: string[] = []
 
-      if (currentUser?.uid) {
+      if (currentUser?.uid && !ignoreSwiped) {
         try {
           const swipesQuery = query(
             collection(db, "swipes"),
@@ -81,7 +81,9 @@ export default function DiscoveryView({
           )
           const swipeSnap = await getDocs(swipesQuery)
           swipedUserIds = swipeSnap.docs.map((d) => d.data().toUserId)
-        } catch {}
+        } catch (e) {
+          console.warn("Could not query swipes:", e)
+        }
       }
 
       const userLat = currentProfile?.location?.latitude || 28.6139
@@ -90,10 +92,9 @@ export default function DiscoveryView({
       // 1. Fetch real users directly from Firestore Cloud DB
       const fetchedProfiles: UserProfile[] = []
       try {
-        const usersQuery = query(collection(db, "users"), where("profileComplete", "==", true))
-        const userSnap = await getDocs(usersQuery)
+        const usersSnap = await getDocs(collection(db, "users"))
 
-        userSnap.docs.forEach((docSnap) => {
+        usersSnap.docs.forEach((docSnap) => {
           const data = docSnap.data() as UserProfile
           const uid = docSnap.id
 
@@ -108,6 +109,14 @@ export default function DiscoveryView({
             return
           }
 
+          // Check if candidate has completed profile or at least has name & photos
+          const isComplete = Boolean(
+            data.profileComplete ||
+            (data.name && data.photos && data.photos.length > 0)
+          )
+
+          if (!isComplete) return
+
           if (uid !== currentUser?.uid && !swipedUserIds.includes(uid)) {
             const pLat = data.location?.latitude || userLat
             const pLng = data.location?.longitude || userLng
@@ -120,14 +129,19 @@ export default function DiscoveryView({
             })
           }
         })
-      } catch (err) {
-        console.warn("Could not fetch real users from Firestore:", err)
+      } catch (err: any) {
+        console.error("Firestore users fetch error:", err)
+        if (err?.code === "permission-denied") {
+          toast.error("Firestore permission denied. Please check your Firebase Security Rules!", {
+            duration: 6000,
+          })
+        }
       }
 
       // 3. Filter by gender & age & distance
       let filtered = fetchedProfiles.filter((p) => {
         if (genderFilter !== "all" && p.gender !== genderFilter) return false
-        if (p.age < ageRange[0] || p.age > ageRange[1]) return false
+        if (p.age && (p.age < ageRange[0] || p.age > ageRange[1])) return false
         if (p.distance !== undefined && p.distance > maxDistanceKm) return false
         return true
       })
@@ -137,7 +151,7 @@ export default function DiscoveryView({
       setProfiles(filtered)
       setCurrentIndex(0)
       setCurrentPhotoIndex(0)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading discovery profiles from cloud Firestore:", err)
       setProfiles([])
       setCurrentIndex(0)
@@ -267,6 +281,7 @@ export default function DiscoveryView({
   const handleResetCards = () => {
     setCurrentIndex(0)
     setHistory([])
+    fetchProfiles(true)
     toast.success("Deck refreshed! Keep swiping! 🎉")
   }
 
